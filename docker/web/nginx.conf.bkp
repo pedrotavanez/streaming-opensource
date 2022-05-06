@@ -1,0 +1,99 @@
+
+
+
+#####################
+user  nginx;
+worker_processes  auto;
+load_module modules/ngx_http_js_module.so;
+
+#error_log  /var/log/nginx/error.log notice;
+pid        /var/run/nginx.pid;
+
+
+events {
+    worker_connections  1024;
+}
+
+
+http {
+#     upstream origin_hls {
+#             http://encoder:8888/hls/manifest.m3u8;
+#         }
+#     upstream origin_dash {
+#             http://encoder:8888/dash/sva.mpd;
+#         }
+
+    include       /etc/nginx/mime.types;
+    default_type  application/octet-stream;
+    # Export headers to logs
+    js_import headers.js;
+    js_set $headers_json headers.headers_to_json;
+    # Time in MS
+    map "$time_local:$msec" $time_local_ms { ~(^\S+)(\s+\S+):\d+\.(\d+)$ $1.$3$2; }
+    map "$time_iso8601 # $msec" $time_iso8601_ms { "~(^[^+]+)(\+[0-9:]+) # \d+\.(\d+)$" $1.$3$2; }
+    sendfile        on;
+    #tcp_nopush     on;
+    log_format json_combined escape=json
+        '{'
+            '"time_local":"$time_local",'
+            '"time_iso":"$time_iso8601",'
+            '"time_local_ms":"$time_local_ms",'
+            '"time_iso_ms":"$time_iso8601_ms",'
+            '"remote_addr":"$remote_addr",'
+            '"remote_user":"$remote_user",'
+            '"request_id":"$request_id",'
+            '"method":"$request_method",'
+            '"args":"$args",'
+            '"arg_name":"$arg_name",'
+            '"request":"$request",'
+            '"request_body":"$request_body",'
+            '"status": "$status",'
+            '"request_length":"$request_length",'
+            '"body_bytes_sent":"$body_bytes_sent",'
+            '"request_time":"$request_time",'
+            '"connection":"$connection",'
+            '"upstream_response_time":"$upstream_response_time",'
+            '"connection_req":"$connection_requests",'
+            '"http_referrer":"$http_referer",'
+            '"http_sent":"$sent_http_range",'
+            '"pipe":"$pipe",'
+            '"host":"$host",'
+            '"uri":"$uri",'
+            '"req_uri":"$request_uri",'
+            '"cookie":"$cookie_name",'
+            '"bytes_sent":"$bytes_sent",'
+            '"http_user_agent":"$http_user_agent",'
+            '"tcpinfo_rtt":"$tcpinfo_rtt",'
+            '"tcpinfo_rttvar":"$tcpinfo_rttvar",'
+            '"tcpinfo_snd_cwnd":"$tcpinfo_snd_cwnd",'
+            '"tcpinfo_rcv_space":"$tcpinfo_rcv_space",'
+            '"headers":"$headers_json"'
+            '}';
+    keepalive_timeout  65;
+
+    #gzip  on;
+
+    #include /etc/nginx/conf.d/*.conf;
+    proxy_cache_path /opt/stream_cache levels=1:2 keys_zone=my_cache:10m max_size=10g
+                 inactive=60m use_temp_path=off;
+server {
+        listen 80;
+        access_log /dev/stdout json_combined;
+        # Testing njs
+        location /jsoncontent {
+            js_content http.hello;
+        }
+    	location / {
+        	proxy_cache my_cache;
+        	proxy_pass http://encoder/hls/manifest.m3u8;
+	}
+#         # Fetch hls manifest
+#         location /hls {
+#             proxy_pass http://transcoder_hls/hls/;
+#         }
+#         # Fetch DASH manifest
+#         location /dash {
+#             proxy_pass http://transcoder_dash/dash/;
+#         }
+    }
+}

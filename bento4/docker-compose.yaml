@@ -26,8 +26,8 @@ services:
 #    logging:
 #      driver: splunk
 #      options:
-#        splunk-url: "$splunk_url_TS"
-#        splunk-token: "$splunk_token_TS"
+#        splunk-url: ${splunk_url_TS}
+#        splunk-token: ${splunk_token_TS}
 #        splunk-insecureskipverify: 'true'
 #        splunk-format: "json"
 #        splunk-verify-connection: "true"
@@ -44,8 +44,8 @@ services:
 #    logging:
 #      driver: splunk
 #      options:
-#        splunk-url: "$splunk_url_TS"
-#        splunk-token: "$splunk_token_TS"
+#        splunk-url: ${splunk_url_TS}
+#        splunk-token: ${splunk_token_TS}
 #        splunk-insecureskipverify: 'true'
 #        splunk-format: "json"
 #        splunk-verify-connection: "true"
