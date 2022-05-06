@@ -1,0 +1,258 @@
+daemon off;
+
+#error_log /dev/stdout info;
+
+
+events {
+    worker_connections 1024;
+}
+
+# Accept multiple connections
+rtmp_auto_push on;
+rtmp {
+    server {
+        listen 1935;
+        chunk_size 8192;
+
+        #application vod {
+        #        play /opt/video; # stream local video file from the path
+        #}
+
+        application encoder {
+            live on;
+            record off;
+            push rtmp://transcoder_hls:1935/hls/;
+            push rtmp://transcoder_dash:1935/dash/;
+            # Run external file for easy manipulation on the fly
+            #exec /opt/data/scripts/exec_wrapper.sh $app $name;
+            #exec_kill_signal term;
+            #push rtmp://transcoder_hls:1935/$app/$name
+            #push rtmp://transcoder_dash:1935/$app/$name
+            # Publish stream to hls and dash apps, create different profiles for different resolutions
+            #exec ffmpeg -i rtmp://transcoder_hls:1935/encoder/$name
+            #  -c:a libfdk_aac -b:a 128k -c:v libx264 -b:v 2500k -f flv -g 30 -r 30 -s 1280x720 -preset superfast -profile:v baseline rtmp://localhost:1935/hls/$name_720p2628kbs
+            #  -c:a libfdk_aac -b:a 128k -c:v libx264 -b:v 1000k -f flv -g 30 -r 30 -s 854x480 -preset superfast -profile:v baseline rtmp://localhost:1935/hls/$name_480p1128kbs
+            #  -c:a libfdk_aac -b:a 128k -c:v libx264 -b:v 750k -f flv -g 30 -r 30 -s 640x360 -preset superfast -profile:v baseline rtmp://localhost:1935/hls/$name_360p878kbs
+            #  -c:a libfdk_aac -b:a 128k -c:v libx264 -b:v 400k -f flv -g 30 -r 30 -s 426x240 -preset superfast -profile:v baseline rtmp://localhost:1935/hls/$name_240p528kbs
+            #  -c:a libfdk_aac -b:a 64k -c:v libx264 -b:v 200k -f flv -g 15 -r 15 -s 426x240 -preset superfast -profile:v baseline rtmp://localhost:1935/hls/$name_240p264kbs;
+
+            #exec ffmpeg -i rtmp://localhost/encoder/$name
+            #    -c:a libfdk_aac -b:a 64k -c:v libx264 -preset fast -profile:v baseline -vsync cfr -s 1024x576 -b:v 1024K -bufsize 1024k
+            #    -f flv rtmp://localhost:1935/dash/$name_hi
+            #    -c:a libfdk_aac -b:a 64k -c:v libx264 -preset fast -profile:v baseline -vsync cfr -s 640x360 -b:v 832K -bufsize 832k
+            #    -f flv rtmp://localhost:1935/dash/$name_med
+            #    -c:a libfdk_aac -b:a 64k -c:v libx264 -preset fast -profile:v baseline -vsync cfr -s 320x180 -b:v 256K -bufsize 256k
+            #    -f flv rtmp://localhost:1935/dash/$name_low;
+            }
+
+        # hls and dash applications, variants should match the values above
+        application hls {
+            live on;
+            interleave on;
+            hls on;
+            hls_sync 100ms;
+            hls_fragment_naming system;
+            hls_fragment 4;
+            hls_playlist_length 10;
+            hls_path /opt/data/hls;
+            hls_nested on;
+
+            hls_variant _720p2628kbs BANDWIDTH=2628000,RESOLUTION=1280x720;
+            hls_variant _480p1128kbs BANDWIDTH=1128000,RESOLUTION=854x480;
+            hls_variant _360p878kbs BANDWIDTH=878000,RESOLUTION=640x360;
+            hls_variant _240p528kbs BANDWIDTH=528000,RESOLUTION=426x240;
+            hls_variant _240p264kbs BANDWIDTH=264000,RESOLUTION=426x240;
+        }
+
+        application hls10 {
+            live on;
+            interleave on;
+            hls on;
+            hls_sync 100ms;
+            hls_fragment_naming system;
+            hls_fragment 10;
+            hls_playlist_length 10;
+            hls_path /opt/data/hls/10/;
+            hls_nested on;
+
+            hls_variant _720p2628kbs BANDWIDTH=2628000,RESOLUTION=1280x720;
+            hls_variant _480p1128kbs BANDWIDTH=1128000,RESOLUTION=854x480;
+            hls_variant _360p878kbs BANDWIDTH=878000,RESOLUTION=640x360;
+            hls_variant _240p528kbs BANDWIDTH=528000,RESOLUTION=426x240;
+            hls_variant _240p264kbs BANDWIDTH=264000,RESOLUTION=426x240;
+        }
+
+        application dash {
+            live on;
+            dash on;
+            dash_repetition on;
+            dash_path /opt/data/dash;
+            dash_fragment 4;
+            dash_playlist_length 120; # keep 120s of tail
+            dash_cleanup on;
+            dash_nested on;
+            dash_variant _low bandwidth="256000" width="320" height="180";
+            dash_variant _med bandwidth="832000" width="640" height="360";
+            dash_variant _hi bandwidth="1024000" width="1024" height="576" max;
+        }
+
+        application dash10 {
+            live on;
+            dash on;
+            dash_repetition on;
+            dash_path /opt/data/dash/10/;
+            dash_fragment 10;
+            dash_playlist_length 120; # keep 120s of tail
+            dash_cleanup on;
+            dash_nested on;
+            dash_variant _low bandwidth="256000" width="320" height="180";
+            dash_variant _med bandwidth="832000" width="640" height="360";
+            dash_variant _hi bandwidth="1024000" width="1024" height="576" max;
+        }
+    }
+}
+
+http {
+    root /www/static;
+    sendfile    off;
+    tcp_nopush  on;
+    #tcp_nodelay on;
+    aio on;
+    directio 512;
+    default_type application/octet-stream;
+    #etag on;
+    # miliseconds
+    # https://serverfault.com/questions/732395/can-nginx-log-time-in-iso-8601-format-but-include-milliseconds
+    map "$time_local:$msec" $time_local_ms { ~(^\S+)(\s+\S+):\d+\.(\d+)$ $1.$3$2; }
+    map "$time_iso8601 # $msec" $time_iso8601_ms { "~(^[^+]+)(\+[0-9:]+) # \d+\.(\d+)$" $1.$3$2; }
+    # https://nginx.org/en/docs/varindex.html
+    log_format json_combined escape=json
+        '{'
+            '"time_local":"$time_local",'
+            '"time_iso":"$time_iso8601",'
+            '"time_local_ms":"$time_local_ms",'
+            '"time_iso_ms":"$time_iso8601_ms",'
+            '"remote_addr":"$remote_addr",'
+            '"remote_user":"$remote_user",'
+            '"request_id":"$request_id",'
+            '"method":"$request_method",'
+            '"args":"$args",'
+            '"arg_name":"$arg_name",'
+            '"request":"$request",'
+            '"request_body":"$request_body",'
+            '"status": "$status",'
+            '"request_length":"$request_length",'
+            '"body_bytes_sent":"$body_bytes_sent",'
+            '"request_time":"$request_time",'
+            '"connection":"$connection",'
+            '"upstream_response_time":"$upstream_response_time",'
+            '"connection_req":"$connection_requests",'
+            '"http_referrer":"$http_referer",'
+            '"http_sent":"$sent_http_range",'
+            '"pipe":"$pipe",'
+            '"host":"$host",'
+            '"uri":"$uri",'
+            '"req_uri":"$request_uri",'
+            '"cookie":"$cookie_name",'
+            '"bytes_sent":"$bytes_sent",'
+            '"http_user_agent":"$http_user_agent",'
+            '"tcpinfo_rtt":"$tcpinfo_rtt",'
+            '"tcpinfo_rttvar":"$tcpinfo_rttvar",'
+            '"tcpinfo_snd_cwnd":"$tcpinfo_snd_cwnd",'
+            '"tcpinfo_rcv_space":"$tcpinfo_rcv_space"'
+            '}';
+
+    # Uncomment these lines to enable SSL.
+    # ssl_ciphers         HIGH:!aNULL:!MD5;
+    # ssl_protocols       TLSv1 TLSv1.1 TLSv1.2;
+    # ssl_session_cache   shared:SSL:10m;
+    # ssl_session_timeout 10m;
+
+    server {
+        listen 80;
+        access_log /dev/stdout json_combined; #/dev/stdout json_combined; #/var/log/nginx/access.log compression;
+
+        # Uncomment these lines to enable SSL.
+        # Update the ssl paths with your own certificate and private key.
+
+        # listen 443 ssl;
+        # ssl_certificate     /opt/certs/example.com.crt;
+        # ssl_certificate_key /opt/certs/example.com.key;
+
+        location /hls {
+            types {
+                application/vnd.apple.mpegurl m3u8;
+                video/mp2t ts;
+            }
+            root /opt/data;
+            add_header Cache-Control no-cache;
+            add_header Access-Control-Allow-Origin *;
+            if ($request_method = 'OPTIONS') {
+              # Tell client that this pre-flight info is valid for 20 days
+              add_header 'Access-Control-Max-Age' 1728000;
+              add_header 'Content-Type' 'text/plain charset=UTF-8';
+              add_header 'Content-Length' 0;
+              return 204;
+            }
+        }
+
+        location /live {
+          alias /opt/data/hls;
+          types {
+              application/vnd.apple.mpegurl m3u8;
+              video/mp2t ts;
+          }
+          add_header Cache-Control no-cache;
+          add_header Access-Control-Allow-Origin *;
+          add_header host befbb0c893f6;
+          if ($request_method = 'OPTIONS') {
+            # Tell client that this pre-flight info is valid for 20 days
+            add_header 'Access-Control-Max-Age' 1728000;
+            add_header 'Content-Type' 'text/plain charset=UTF-8';
+            add_header 'Content-Length' 0;
+            return 204;
+           }
+         }
+
+        location /dash/live/index.mpd {
+            alias /opt/data/dash/sva.mpd;
+            add_header 'Access-Control-Allow-Origin' '*';
+            add_header Cache-Control 'public, max-age=0, s-maxage=2';
+            if ($request_method = 'OPTIONS') {
+                # Tell client that this pre-flight info is valid for 20 days
+                add_header 'Access-Control-Max-Age' 1728000;
+                add_header 'Content-Type' 'text/plain charset=UTF-8';
+                add_header 'Content-Length' 0;
+                return 204;
+                }
+        }
+
+        location /dash/ {
+            alias /opt/data/dash/;
+            add_header 'Access-Control-Allow-Origin' '*';
+            add_header Cache-Control 'public, max-age=600, s-maxage=600';
+            add_header host befbb0c893f6;
+            if ($request_method = 'OPTIONS') {
+                # Tell client that this pre-flight info is valid for 20 days
+                add_header 'Access-Control-Max-Age' 1728000;
+                add_header 'Content-Type' 'text/plain charset=UTF-8';
+                add_header 'Content-Length' 0;
+                return 204;
+        }
+        }
+
+        location /stat {
+            rtmp_stat all;
+            rtmp_stat_stylesheet stat.xsl;
+        }
+
+        location /stat.xsl {
+            root /www/static;
+        }
+
+        location /crossdomain.xml {
+            default_type text/xml;
+            expires 24h;
+        }
+    }
+}
