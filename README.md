@@ -1,8 +1,8 @@
 # Bento4
 
-FMMPEG used for resizing/rescalling
-Bento4 used for packaging mp4 to HLS/DASH streams
-Nginx serves the files and provides complete JSON log
+* FMMPEG used for resizing/rescalling
+* Bento4 used for packaging mp4 to HLS/DASH streams
+* Nginx serves the files and provides complete JSON log with headers
 
 # Docker
 
@@ -12,4 +12,4 @@ Uses nginx-rtmp module, receives an RTMP stream and then using exec directives l
 
 
 Current issues:
-- Dash manifests is not stable and it's not passing Dash validator
+* Dash manifests is not stable and it's not passing Dash validator
