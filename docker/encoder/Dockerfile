@@ -42,7 +42,7 @@ RUN wget https://nginx.org/download/nginx-${NGINX_VERSION}.tar.gz && \
 #  rm v${NGINX_RTMP_VERSION}.tar.gz
 
 # Fetch from our fork
-RUN git clone --branch dash-manifest-validation https://github.com/pedrotavanez/nginx-rtmp-module.git
+RUN git clone https://github.com/pedrotavanez/nginx-rtmp-module.git
 
 #If loading rtmp locally
 #COPY nginx-rtmp-module /tmp/nginx-rtmp-module
