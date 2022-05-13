@@ -85,13 +85,5 @@ services:
       - RTMP_PORT=1935
     volumes:
       - ./certs:/opt/certs
-    logging:
-      driver: splunk
-      options:
-        splunk-url: "${splunk_url_TS}"
-        splunk-token: "${splunk_token_TS}"
-        splunk-insecureskipverify: 'true'
-        splunk-format: "json"
-        splunk-verify-connection: "true"
 
 # NTP : https://github.com/cturra/docker-ntp
