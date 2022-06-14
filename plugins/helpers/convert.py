@@ -8,7 +8,6 @@ def convert(value, bw=False):
         suffix = ""
     i = 0
     value = int(value)
-    print(f"{value} {type(value)}")
     while value > 1000:
         value = value / 1000
         i = i + 1

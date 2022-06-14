@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 from helpers.thresholds import validate_threshold
-def create_metric(metric_value, metric_name_ts, has_suffix="", visible=True, critical=False):
+def create_metric(metric_value, metric_name_ts, has_suffix="", type="numeric",visible=True, critical=False):
     value=metric_value
     suffix=has_suffix
     status, status_mg=validate_threshold(metric_value, metric_name_ts, suffix, critical)
@@ -11,7 +11,7 @@ def create_metric(metric_value, metric_name_ts, has_suffix="", visible=True, cri
         "name": metric_name_ts,
         "suffix": f" {suffix}",
         "value": value,
-        "type": "numeric",
+        "type": type,
         "status": status,
         "visible": visible,
     }
