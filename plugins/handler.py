@@ -46,8 +46,7 @@ touchstream = {
 
 def handler(options):
     nginx = ENCODER(options)
-    rtmp_stats = nginx.request_data()
-    ts_json = nginx.parse_data(rtmp_stats)
+    ts_json = nginx.request_data()
     result = nginx.post_ts(ts_json)
     return result
 
